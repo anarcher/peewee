@@ -23,8 +23,13 @@ try:
 except ImportError:
     psycopg2 = None
 
-if sqlite3 is None and psycopg2 is None:
-    raise ImproperlyConfigured('Either sqlite3 or psycopg2 must be installed')
+try:
+    import MySQLdb
+except ImportError:
+    MySQLdb = None
+
+if sqlite3 is None and psycopg2 is None and MySQLdb is None:
+    raise ImproperlyConfigured('Either sqlite3 or psycopg2 or MySQLdb must be installed')
 
 
 DATABASE_NAME = os.environ.get('PEEWEE_DATABASE', 'peewee.db')
@@ -140,6 +145,38 @@ class PostgresqlAdapter(BaseAdapter):
         elif lookup in ('startswith', 'istartswith'):
             return '%s%%' % value
         return value
+
+class MysqlAdapter(BaseAdapter):
+    operations = {
+        'lt': '< %s',
+        'lte': '<= %s',
+        'gt': '> %s',
+        'gte': '>= %s',
+        'eq': '= %s',
+        'ne': '!= %s', # watch yourself with this one
+        'in': 'IN (%s)', # special-case to list q-marks
+        'is': 'IS %s',
+        'icontains': 'LIKE %s', # surround param with %'s
+        'contains': 'LIKE %s', # surround param with *'s
+        'istartswith': 'LIKE %s',
+        'startswith': 'LIKE %s',
+    }
+        
+    def connect(self, database, **kwargs):
+        return MySQLdb.connect(database=database, **kwargs)
+    
+    def last_insert_id(self, cursor, model):
+        cursor.execute("SELECT CURRVAL('\"%s_%s_seq\"')" % (
+            model._meta.db_table, model._meta.pk_name))
+        return cursor.fetchone()[0]
+    
+    def lookup_cast(self, lookup, value):
+        if lookup in ('contains', 'icontains'):
+            return '%%%s%%' % value
+        elif lookup in ('startswith', 'istartswith'):
+            return '%s%%' % value
+        return value
+
 
 
 class Database(object):
@@ -267,6 +304,9 @@ def Max(f, alias='max'):
 
 def Min(f, alias='min'):
     return ('MIN', f, alias)
+
+def SUM(f,alias="sum"):
+    return ('SUM',f,alias)
 
 def mark_query_dirty(func):
     def inner(self, *args, **kwargs):
