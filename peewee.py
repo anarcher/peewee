@@ -299,7 +299,7 @@ def Max(f, alias='max'):
 def Min(f, alias='min'):
     return ('MIN', f, alias)
 
-def SUM(f,alias="sum"):
+def Sum(f,alias="sum"):
     return ('SUM',f,alias)
 
 def mark_query_dirty(func):
@@ -716,7 +716,7 @@ class SelectQuery(BaseQuery):
                 alias = alias_map[model]
                 group_by.append(self.combine_field(alias, clause))
         else:
-            group_by = list(self._group_by)
+            group_by = list(f[1] for f in self._group_by)
 
         parsed_query = self.parse_select_query(alias_map)
         
