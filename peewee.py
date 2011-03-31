@@ -161,7 +161,7 @@ class MysqlAdapter(BaseAdapter):
     }
         
     def connect(self, database, **kwargs):
-        return MySQLdb.connect(database=database, **kwargs)
+        return MySQLdb.connect(db=database, **kwargs)
     
     def last_insert_id(self, cursor, model):
         return cursor.insert_id()
